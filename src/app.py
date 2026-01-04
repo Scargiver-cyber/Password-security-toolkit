@@ -501,12 +501,42 @@ def password_vault_page():
 
                 if pwned_passwords:
                     st.error("⚠️ **COMPROMISED PASSWORDS:**")
+                    st.markdown("Click each entry to update with your new password after changing it on the site.")
+
                     for p in pwned_passwords:
-                        if p['url']:
-                            st.markdown(f"- **{p['name']}** - `{p['password']}` - seen {p['count']:,}x → [Change Password]({p['url']})")
-                        else:
-                            st.markdown(f"- **{p['name']}** - `{p['password']}` - seen {p['count']:,}x in breaches!")
-                    st.markdown("**Change these immediately!**")
+                        with st.expander(f"🔓 **{p['name']}** - seen {p['count']:,}x in breaches"):
+                            st.markdown(f"**Current Password:** `{p['password']}`")
+
+                            if p['url']:
+                                st.markdown(f"**Step 1:** [Go to {p['name']} to change password]({p['url']})")
+                            else:
+                                st.markdown("**Step 1:** Go to the service and change your password")
+
+                            st.markdown("**Step 2:** Enter your new password below:")
+
+                            new_pwd = st.text_input(
+                                "New Password",
+                                type="password",
+                                key=f"new_pwd_{p['id']}",
+                                placeholder="Enter the new password you just set"
+                            )
+
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if st.button("💾 Save New Password", key=f"save_pwd_{p['id']}", type="primary"):
+                                    if new_pwd:
+                                        vault.update_entry(p['id'], password=new_pwd)
+                                        st.success(f"✅ Updated {p['name']} with new password!")
+                                        st.rerun()
+                                    else:
+                                        st.warning("Please enter the new password first")
+                            with col2:
+                                if st.checkbox("Show new password", key=f"show_new_{p['id']}"):
+                                    if new_pwd:
+                                        st.code(new_pwd)
+
+                    st.markdown("---")
+                    st.markdown("**Change all compromised passwords immediately!**")
                 else:
                     st.success("✅ All passwords safe!")
 
