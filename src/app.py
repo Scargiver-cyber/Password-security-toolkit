@@ -475,7 +475,9 @@ def password_vault_page():
                                         pwned_passwords.append({
                                             'name': entry.name,
                                             'count': int(c.strip()),
-                                            'url': entry.url
+                                            'url': entry.url,
+                                            'password': entry.password,
+                                            'id': entry.id
                                         })
                                         found = True
                                         break
@@ -501,9 +503,9 @@ def password_vault_page():
                     st.error("⚠️ **COMPROMISED PASSWORDS:**")
                     for p in pwned_passwords:
                         if p['url']:
-                            st.markdown(f"- **{p['name']}** - seen {p['count']:,}x → [Change Password]({p['url']})")
+                            st.markdown(f"- **{p['name']}** - `{p['password']}` - seen {p['count']:,}x → [Change Password]({p['url']})")
                         else:
-                            st.markdown(f"- **{p['name']}** - seen {p['count']:,}x in breaches!")
+                            st.markdown(f"- **{p['name']}** - `{p['password']}` - seen {p['count']:,}x in breaches!")
                     st.markdown("**Change these immediately!**")
                 else:
                     st.success("✅ All passwords safe!")
