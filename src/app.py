@@ -518,6 +518,60 @@ def password_vault_page():
                         st.markdown(f"- [{email}](https://haveibeenpwned.com/account/{email.replace('@', '%40')})")
 
         st.markdown("---")
+        st.markdown("### Stale Accounts")
+        st.markdown("Find accounts you may no longer need (not modified in over 1 year).")
+
+        stale_months = st.slider("Consider stale after (months)", 6, 36, 12)
+
+        if st.button("🧹 Find Stale Accounts"):
+            from datetime import datetime, timedelta
+
+            entries = vault.list_entries()
+            cutoff = datetime.now() - timedelta(days=stale_months * 30)
+            stale = []
+
+            for entry in entries:
+                try:
+                    modified = datetime.fromisoformat(entry.modified_at.replace('Z', '+00:00').split('+')[0])
+                    if modified < cutoff:
+                        days_ago = (datetime.now() - modified).days
+                        stale.append({
+                            'entry': entry,
+                            'days_ago': days_ago,
+                            'years': round(days_ago / 365, 1)
+                        })
+                except (ValueError, AttributeError):
+                    pass
+
+            stale.sort(key=lambda x: x['days_ago'], reverse=True)
+
+            if stale:
+                st.warning(f"⚠️ Found **{len(stale)}** stale accounts (not modified in {stale_months}+ months)")
+                st.markdown("Consider deleting accounts you no longer use:")
+
+                for item in stale:
+                    e = item['entry']
+                    with st.expander(f"🕸️ {e.name} ({e.username}) - {item['years']} years old"):
+                        st.markdown(f"**Last Modified:** {e.modified_at[:10]}")
+                        st.markdown(f"**Category:** {e.category}")
+                        if e.url:
+                            st.markdown(f"**URL:** {e.url}")
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if e.url:
+                                st.markdown(f"[Go to Site]({e.url})")
+                        with col2:
+                            if st.button("🗑️ Delete", key=f"stale_del_{e.id}"):
+                                vault.delete_entry(e.id)
+                                st.success(f"Deleted {e.name}")
+                                st.rerun()
+
+                st.info("💡 **Tip:** Before deleting, visit the site and request account deletion to remove your data from their servers.")
+            else:
+                st.success(f"✅ No stale accounts! All entries modified within {stale_months} months.")
+
+        st.markdown("---")
         st.markdown("### Security Info")
         st.info("""
         **Encryption:** AES-256 (Fernet)
