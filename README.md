@@ -7,13 +7,17 @@ A comprehensive command-line toolkit for password analysis, generation, security
 
 ## Features
 
-### 1. Password Vault (NEW)
+### 1. Password Vault
 - **AES-256 Encryption**: Military-grade encryption via Fernet
 - **PBKDF2 Key Derivation**: 480,000 iterations (OWASP 2023 recommendation)
 - **Local Storage**: Passwords never leave your machine
 - **Master Password Protected**: Single password unlocks all entries
 - **Category Organization**: Group passwords by type
 - **Search & Export**: Find entries quickly, export for backup
+- **Web UI**: Streamlit-based browser interface (deployable via Docker)
+- **CSV Import**: Import from Apple Passwords, Chrome, 1Password with duplicate detection
+- **Bulk Breach Check**: Check all passwords against HIBP with one click
+- **Stale Account Finder**: Identify unused accounts for cleanup
 
 ### 2. Password Strength Analyzer
 - **Entropy Calculation**: Measures password randomness in bits
@@ -150,6 +154,52 @@ Password-security-toolkit/
     ├── breach_detector.py     # HIBP integration
     ├── hash_tools.py          # Hash identification
     └── app.py                 # Streamlit GUI (optional)
+```
+
+## Web UI (Streamlit)
+
+Run the graphical web interface:
+
+```bash
+cd src
+streamlit run app.py
+```
+
+Access at `http://localhost:8501`
+
+### Web UI Features
+
+| Tab | Features |
+|-----|----------|
+| **View Entries** | List all passwords, filter by category, show/hide passwords |
+| **Add Entry** | Add new passwords with optional auto-generation |
+| **Search** | Find entries by name, username, or URL |
+| **Import** | CSV import from Apple Passwords, Chrome, 1Password |
+| **Settings** | Export, Breach Check, Stale Account Finder |
+
+### Docker Deployment
+
+Deploy as a container for self-hosting:
+
+```bash
+# Build and run
+docker build -t password-vault .
+docker run -d -p 8501:8501 -v ./data:/app/data -e VAULT_PATH=/app/data password-vault
+```
+
+Or use docker-compose:
+
+```yaml
+version: '3.8'
+services:
+  password-vault:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - VAULT_PATH=/app/data
 ```
 
 ## Vault Security Details
