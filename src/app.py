@@ -191,7 +191,7 @@ def password_vault_page():
     vault = st.session_state.vault
 
     # Tabs for different operations
-    tab1, tab2, tab3, tab4 = st.tabs(["📋 View Entries", "➕ Add Entry", "🔍 Search", "⚙️ Settings"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 View Entries", "➕ Add Entry", "🔍 Search", "📥 Import", "⚙️ Settings"])
 
     with tab1:
         st.markdown("### Your Stored Passwords")
@@ -317,6 +317,93 @@ def password_vault_page():
                         st.code(entry.password)
 
     with tab4:
+        st.markdown("### Import Passwords")
+        st.markdown("Import passwords from Apple Passwords, Chrome, or other password managers.")
+
+        st.info("""
+        **Apple Passwords Export:**
+        1. Open **Passwords** app (macOS Sequoia) or **Keychain Access**
+        2. Go to **File → Export Passwords...**
+        3. Save as CSV and upload below
+        """)
+
+        uploaded_file = st.file_uploader(
+            "Upload CSV file",
+            type=["csv"],
+            help="CSV with columns: Title, URL, Username, Password, Notes, OTPAuth"
+        )
+
+        if uploaded_file is not None:
+            import csv
+            import io
+
+            content = uploaded_file.read().decode('utf-8')
+            reader = csv.DictReader(io.StringIO(content))
+            rows = list(reader)
+            st.markdown(f"**Found {len(rows)} passwords to import**")
+
+            if rows:
+                st.markdown("#### Preview (first 5 entries)")
+                for i, row in enumerate(rows[:5]):
+                    title = row.get('Title', row.get('name', row.get('Name', 'Unknown')))
+                    username = row.get('Username', row.get('username', row.get('Login', '')))
+                    url = row.get('URL', row.get('url', row.get('Website', '')))
+                    st.markdown(f"- **{title}** ({username})" + (f" - {url[:30]}..." if url else ""))
+
+                if len(rows) > 5:
+                    st.markdown(f"*...and {len(rows) - 5} more*")
+
+                st.markdown("---")
+                category = st.text_input("Category for imported passwords", value="Imported")
+                skip_duplicates = st.checkbox("Skip entries with same name+username", value=True)
+
+                if st.button("📥 Import All", type="primary"):
+                    imported = 0
+                    skipped = 0
+                    errors = 0
+
+                    existing = set()
+                    if skip_duplicates:
+                        for e in vault.list_entries():
+                            existing.add((e.name.lower(), e.username.lower()))
+
+                    progress = st.progress(0)
+                    for i, row in enumerate(rows):
+                        try:
+                            title = row.get('Title', row.get('name', row.get('Name', 'Unknown')))
+                            username = row.get('Username', row.get('username', row.get('Login', '')))
+                            password = row.get('Password', row.get('password', ''))
+                            url = row.get('URL', row.get('url', row.get('Website', '')))
+                            notes = row.get('Notes', row.get('notes', ''))
+                            otp = row.get('OTPAuth', row.get('totp', ''))
+                            if otp:
+                                notes = f"{notes}\nOTP: {otp}" if notes else f"OTP: {otp}"
+
+                            if not password:
+                                skipped += 1
+                                continue
+                            if skip_duplicates and (title.lower(), username.lower()) in existing:
+                                skipped += 1
+                                continue
+
+                            vault.add_entry(name=title, username=username, password=password,
+                                          url=url if url else None, notes=notes if notes else None,
+                                          category=category)
+                            imported += 1
+                        except Exception:
+                            errors += 1
+                        progress.progress((i + 1) / len(rows))
+
+                    progress.empty()
+                    st.success(f"✅ Imported **{imported}** passwords!")
+                    if skipped:
+                        st.info(f"ℹ️ Skipped {skipped} entries (duplicates or empty)")
+                    if errors:
+                        st.warning(f"⚠️ {errors} entries had errors")
+                    st.balloons()
+                    st.rerun()
+
+    with tab5:
         st.markdown("### Vault Settings")
 
         st.markdown(f"**Vault Location:** `{DEFAULT_VAULT_PATH}`")
@@ -353,6 +440,80 @@ def password_vault_page():
                     "vault_export_SENSITIVE.json",
                     "application/json"
                 )
+
+        st.markdown("---")
+        st.markdown("### Breach Check")
+        st.markdown("Check all passwords and emails against known breaches.")
+
+        if st.button("🔍 Check All for Breaches", type="primary"):
+            import hashlib
+            import requests
+
+            entries = vault.list_entries()
+            if not entries:
+                st.warning("No entries to check")
+            else:
+                progress = st.progress(0)
+                status = st.empty()
+                pwned_passwords = []
+                safe_passwords = []
+                emails = set()
+
+                for i, entry in enumerate(entries):
+                    status.markdown(f"Checking {entry.name}...")
+                    sha1_hash = hashlib.sha1(entry.password.encode()).hexdigest().upper()
+                    prefix, suffix = sha1_hash[:5], sha1_hash[5:]
+
+                    try:
+                        resp = requests.get(f"https://api.pwnedpasswords.com/range/{prefix}", timeout=10)
+                        if resp.status_code == 200:
+                            found = False
+                            for line in resp.text.splitlines():
+                                if ':' in line:
+                                    h, c = line.split(':')
+                                    if h.strip() == suffix:
+                                        pwned_passwords.append({
+                                            'name': entry.name,
+                                            'count': int(c.strip()),
+                                            'url': entry.url
+                                        })
+                                        found = True
+                                        break
+                            if not found:
+                                safe_passwords.append(entry.name)
+                    except Exception as e:
+                        st.warning(f"Could not check {entry.name}: {e}")
+
+                    if '@' in entry.username:
+                        emails.add(entry.username)
+                    progress.progress((i + 1) / len(entries))
+
+                progress.empty()
+                status.empty()
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Safe", len(safe_passwords))
+                with col2:
+                    st.metric("Pwned", len(pwned_passwords), delta=f"{len(pwned_passwords)} breached" if pwned_passwords else "None!")
+
+                if pwned_passwords:
+                    st.error("⚠️ **COMPROMISED PASSWORDS:**")
+                    for p in pwned_passwords:
+                        if p['url']:
+                            st.markdown(f"- **{p['name']}** - seen {p['count']:,}x → [Change Password]({p['url']})")
+                        else:
+                            st.markdown(f"- **{p['name']}** - seen {p['count']:,}x in breaches!")
+                    st.markdown("**Change these immediately!**")
+                else:
+                    st.success("✅ All passwords safe!")
+
+                if emails:
+                    st.markdown("---")
+                    st.markdown("### Email Breach Links")
+                    st.info("Click to check each email:")
+                    for email in sorted(emails):
+                        st.markdown(f"- [{email}](https://haveibeenpwned.com/account/{email.replace('@', '%40')})")
 
         st.markdown("---")
         st.markdown("### Security Info")

@@ -31,8 +31,9 @@ except ImportError:
     CRYPTO_AVAILABLE = False
 
 
-# Default vault location
-DEFAULT_VAULT_PATH = Path.home() / ".password_vault" / "vault.encrypted"
+# Default vault location - supports VAULT_PATH env var for server deployment
+_vault_dir = os.environ.get("VAULT_PATH", str(Path.home() / ".password_vault"))
+DEFAULT_VAULT_PATH = Path(_vault_dir) / "vault.encrypted"
 VAULT_VERSION = "1.0"
 PBKDF2_ITERATIONS = 480_000  # OWASP 2023 recommendation
 
