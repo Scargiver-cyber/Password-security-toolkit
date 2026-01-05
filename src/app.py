@@ -445,7 +445,20 @@ def password_vault_page():
         st.markdown("### Breach Check")
         st.markdown("Check all passwords and emails against known breaches.")
 
-        if st.button("🔍 Check All for Breaches", type="primary"):
+        # Initialize session state for breach results
+        if 'breach_results' not in st.session_state:
+            st.session_state.breach_results = None
+
+        col_check, col_clear = st.columns([2, 1])
+        with col_check:
+            run_check = st.button("🔍 Check All for Breaches", type="primary")
+        with col_clear:
+            if st.session_state.breach_results:
+                if st.button("🗑️ Clear Results"):
+                    st.session_state.breach_results = None
+                    st.rerun()
+
+        if run_check:
             import hashlib
             import requests
 
@@ -493,75 +506,94 @@ def password_vault_page():
                 progress.empty()
                 status.empty()
 
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Safe", len(safe_passwords))
-                with col2:
-                    st.metric("Pwned", len(pwned_passwords), delta=f"{len(pwned_passwords)} breached" if pwned_passwords else "None!")
+                # Store results in session state
+                st.session_state.breach_results = {
+                    'pwned': pwned_passwords,
+                    'safe': safe_passwords,
+                    'emails': list(emails)
+                }
 
-                if pwned_passwords:
-                    st.error("⚠️ **COMPROMISED PASSWORDS:**")
-                    st.markdown("Click each entry to update with your new password after changing it on the site.")
+        # Display results from session state
+        if st.session_state.breach_results:
+            results = st.session_state.breach_results
+            pwned_passwords = results['pwned']
+            safe_passwords = results['safe']
+            emails = results['emails']
 
-                    for p in pwned_passwords:
-                        with st.expander(f"🔓 **{p['name']}** - seen {p['count']:,}x in breaches"):
-                            st.markdown(f"**Current Password:** `{p['password']}`")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Safe", len(safe_passwords))
+            with col2:
+                st.metric("Pwned", len(pwned_passwords), delta=f"{len(pwned_passwords)} breached" if pwned_passwords else "None!")
 
-                            # Initialize session state for generated password
-                            gen_key = f"gen_pwd_{p['id']}"
-                            if gen_key not in st.session_state:
-                                st.session_state[gen_key] = ""
+            if pwned_passwords:
+                st.error("⚠️ **COMPROMISED PASSWORDS:**")
+                st.markdown("Click each entry to update with your new password after changing it on the site.")
 
-                            st.markdown("**Step 1:** Generate a new secure password:")
-                            gen_col1, gen_col2 = st.columns([1, 2])
-                            with gen_col1:
-                                if st.button("🎲 Generate", key=f"gen_btn_{p['id']}"):
-                                    st.session_state[gen_key] = generate_password(length=20)
-                            with gen_col2:
-                                if st.session_state[gen_key]:
-                                    st.code(st.session_state[gen_key])
+                for p in pwned_passwords:
+                    with st.expander(f"🔓 **{p['name']}** - seen {p['count']:,}x in breaches"):
+                        st.markdown(f"**Current Password:** `{p['password']}`")
 
-                            if p['url']:
-                                st.markdown(f"**Step 2:** [Go to {p['name']} and change password]({p['url']})")
-                            else:
-                                st.markdown("**Step 2:** Go to the service and change your password")
+                        # Initialize session state for generated password
+                        gen_key = f"gen_pwd_{p['id']}"
+                        if gen_key not in st.session_state:
+                            st.session_state[gen_key] = ""
 
-                            st.markdown("**Step 3:** Paste/enter the new password and save:")
+                        st.markdown("**Step 1:** Generate a new secure password:")
+                        gen_col1, gen_col2 = st.columns([1, 2])
+                        with gen_col1:
+                            if st.button("🎲 Generate", key=f"gen_btn_{p['id']}"):
+                                st.session_state[gen_key] = generate_password(length=20)
+                        with gen_col2:
+                            if st.session_state[gen_key]:
+                                st.code(st.session_state[gen_key])
 
-                            new_pwd = st.text_input(
-                                "New Password",
-                                value=st.session_state[gen_key],
-                                type="password",
-                                key=f"new_pwd_{p['id']}",
-                                placeholder="Paste generated password or enter manually"
-                            )
+                        if p['url']:
+                            st.markdown(f"**Step 2:** [Go to {p['name']} and change password]({p['url']})")
+                        else:
+                            st.markdown("**Step 2:** Go to the service and change your password")
 
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                if st.button("💾 Save New Password", key=f"save_pwd_{p['id']}", type="primary"):
-                                    if new_pwd:
-                                        vault.update_entry(p['id'], password=new_pwd)
-                                        st.session_state[gen_key] = ""  # Clear generated
-                                        st.success(f"✅ Updated {p['name']} with new password!")
-                                        st.rerun()
-                                    else:
-                                        st.warning("Please enter the new password first")
-                            with col2:
-                                if st.checkbox("Show input", key=f"show_new_{p['id']}"):
-                                    if new_pwd:
-                                        st.code(new_pwd)
+                        st.markdown("**Step 3:** Paste/enter the new password and save:")
 
-                    st.markdown("---")
-                    st.markdown("**Change all compromised passwords immediately!**")
-                else:
-                    st.success("✅ All passwords safe!")
+                        new_pwd = st.text_input(
+                            "New Password",
+                            value=st.session_state[gen_key],
+                            type="password",
+                            key=f"new_pwd_{p['id']}",
+                            placeholder="Paste generated password or enter manually"
+                        )
 
-                if emails:
-                    st.markdown("---")
-                    st.markdown("### Email Breach Links")
-                    st.info("Click to check each email:")
-                    for email in sorted(emails):
-                        st.markdown(f"- [{email}](https://haveibeenpwned.com/account/{email.replace('@', '%40')})")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("💾 Save New Password", key=f"save_pwd_{p['id']}", type="primary"):
+                                if new_pwd:
+                                    vault.update_entry(p['id'], password=new_pwd)
+                                    st.session_state[gen_key] = ""  # Clear generated
+                                    # Remove from breach results
+                                    st.session_state.breach_results['pwned'] = [
+                                        x for x in st.session_state.breach_results['pwned']
+                                        if x['id'] != p['id']
+                                    ]
+                                    st.success(f"✅ Updated {p['name']} with new password!")
+                                    st.rerun()
+                                else:
+                                    st.warning("Please enter the new password first")
+                        with col2:
+                            if st.checkbox("Show input", key=f"show_new_{p['id']}"):
+                                if new_pwd:
+                                    st.code(new_pwd)
+
+                st.markdown("---")
+                st.markdown("**Change all compromised passwords immediately!**")
+            else:
+                st.success("✅ All passwords safe!")
+
+            if emails:
+                st.markdown("---")
+                st.markdown("### Email Breach Links")
+                st.info("Click to check each email:")
+                for email in sorted(emails):
+                    st.markdown(f"- [{email}](https://haveibeenpwned.com/account/{email.replace('@', '%40')})")
 
         st.markdown("---")
         st.markdown("### Stale Accounts")
