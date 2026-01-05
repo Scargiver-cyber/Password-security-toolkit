@@ -507,18 +507,33 @@ def password_vault_page():
                         with st.expander(f"🔓 **{p['name']}** - seen {p['count']:,}x in breaches"):
                             st.markdown(f"**Current Password:** `{p['password']}`")
 
-                            if p['url']:
-                                st.markdown(f"**Step 1:** [Go to {p['name']} to change password]({p['url']})")
-                            else:
-                                st.markdown("**Step 1:** Go to the service and change your password")
+                            # Initialize session state for generated password
+                            gen_key = f"gen_pwd_{p['id']}"
+                            if gen_key not in st.session_state:
+                                st.session_state[gen_key] = ""
 
-                            st.markdown("**Step 2:** Enter your new password below:")
+                            st.markdown("**Step 1:** Generate a new secure password:")
+                            gen_col1, gen_col2 = st.columns([1, 2])
+                            with gen_col1:
+                                if st.button("🎲 Generate", key=f"gen_btn_{p['id']}"):
+                                    st.session_state[gen_key] = generate_password(length=20)
+                            with gen_col2:
+                                if st.session_state[gen_key]:
+                                    st.code(st.session_state[gen_key])
+
+                            if p['url']:
+                                st.markdown(f"**Step 2:** [Go to {p['name']} and change password]({p['url']})")
+                            else:
+                                st.markdown("**Step 2:** Go to the service and change your password")
+
+                            st.markdown("**Step 3:** Paste/enter the new password and save:")
 
                             new_pwd = st.text_input(
                                 "New Password",
+                                value=st.session_state[gen_key],
                                 type="password",
                                 key=f"new_pwd_{p['id']}",
-                                placeholder="Enter the new password you just set"
+                                placeholder="Paste generated password or enter manually"
                             )
 
                             col1, col2 = st.columns(2)
@@ -526,12 +541,13 @@ def password_vault_page():
                                 if st.button("💾 Save New Password", key=f"save_pwd_{p['id']}", type="primary"):
                                     if new_pwd:
                                         vault.update_entry(p['id'], password=new_pwd)
+                                        st.session_state[gen_key] = ""  # Clear generated
                                         st.success(f"✅ Updated {p['name']} with new password!")
                                         st.rerun()
                                     else:
                                         st.warning("Please enter the new password first")
                             with col2:
-                                if st.checkbox("Show new password", key=f"show_new_{p['id']}"):
+                                if st.checkbox("Show input", key=f"show_new_{p['id']}"):
                                     if new_pwd:
                                         st.code(new_pwd)
 
