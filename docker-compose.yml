@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  password-vault:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      # Vault data persists between container restarts.
+      # Replace ./data with any host path you prefer.
+      - ./data:/app/data
+    environment:
+      - VAULT_PATH=/app/data
+    restart: unless-stopped

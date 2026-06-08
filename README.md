@@ -1,80 +1,138 @@
 # Password Security Toolkit
 
-A comprehensive command-line toolkit for password analysis, generation, security assessment, and **encrypted local password storage**.
+An educational learning toolkit for hands-on password security practice. Analyze password strength, generate secure passwords, check breach databases, explore hashing algorithms, and run an encrypted local password vault — all from the command line or a browser GUI.
+
+> **For cybersecurity students:** Every tool here teaches a real concept — entropy, k-anonymity, key derivation, and more. Run the commands, read the output, and look up any term you don't recognize.
 
 ![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## Features
+---
 
-### 1. Password Vault
-- **AES-256 Encryption**: Military-grade encryption via Fernet
-- **PBKDF2 Key Derivation**: 480,000 iterations (OWASP 2023 recommendation)
-- **Local Storage**: Passwords never leave your machine
-- **Master Password Protected**: Single password unlocks all entries
-- **Category Organization**: Group passwords by type
-- **Search & Export**: Find entries quickly, export for backup
-- **Web UI**: Streamlit-based browser interface (deployable via Docker)
-- **CSV Import**: Import from Apple Passwords, Chrome, 1Password with duplicate detection
-- **Bulk Breach Check**: Check all passwords against HIBP with one click
-- **Stale Account Finder**: Identify unused accounts for cleanup
+## What it does
 
-### 2. Password Strength Analyzer
-- **Entropy Calculation**: Measures password randomness in bits
-- **Character Diversity Analysis**: Checks for uppercase, lowercase, digits, special characters
-- **Common Pattern Detection**: Identifies keyboard patterns, sequences, common passwords
-- **Crack Time Estimation**: GPU-based estimate (1 billion hashes/second)
-- **Comprehensive Scoring**: 0-100 strength score with detailed feedback
+| Tool | What you learn |
+|------|----------------|
+| Password Analyzer | Entropy, crack time estimation, pattern detection |
+| Password Generator | Cryptographically secure randomness (`secrets` module) |
+| Breach Checker | Have I Been Pwned API, k-anonymity privacy model |
+| Hash Tools | MD5 / SHA / bcrypt identification and generation |
+| Password Vault | AES-256 encryption, PBKDF2 key derivation, local-only storage |
+| Streamlit GUI | Optional browser interface for all of the above |
 
-### 3. Secure Password Generator
-- **Cryptographically Secure**: Uses Python's `secrets` module
-- **Customizable**: Length, character types, ambiguous character exclusion
-- **Passphrase Generation**: Memorable multi-word passphrases
-- **PIN Generation**: Random PIN codes
+---
 
-### 4. Breach Detection
-- **Have I Been Pwned Integration**: Check against 800+ million breached passwords
-- **K-Anonymity Protection**: Only first 5 hash characters sent to API
-- **Privacy Preserving**: Your actual password never leaves your machine
-
-### 5. Hash Tools
-- **Hash Identification**: Auto-detect MD5, SHA1, SHA256, SHA512, bcrypt, Argon2
-- **Password Hashing**: Generate hashes with multiple algorithms
-- **Security Recommendations**: Best practices for password storage
-
-## Installation
-
-### Prerequisites
-- Python 3.9 or higher
-- pip (Python package installer)
-
-### Quick Start
+## Quick start
 
 ```bash
-# Clone the repository
+# 1. Clone
 git clone https://github.com/Scargiver-cyber/Password-security-toolkit.git
 cd Password-security-toolkit
 
-# Create virtual environment
+# 2. Create a virtual environment and install dependencies
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# 3. Run your first commands (from inside src/)
+cd src
+python3 main.py generate -l 20
+python3 main.py analyze "password123"
 ```
 
-## Usage
+> **Windows note:** Replace `source venv/bin/activate` with `venv\Scripts\activate`.
 
-All commands are run from the `src/` directory:
+---
+
+## Try it in 30 seconds
+
+These two commands work immediately after install — no setup, no config file:
 
 ```bash
 cd src
+
+# Generate a 20-character password and show its entropy + strength
+python3 main.py generate -l 20
+
+# Analyze a weak password and see exactly why it fails
+python3 main.py analyze "password123"
 ```
 
-### Password Vault Commands
+Expected output for `generate -l 20`:
+```
+======================================================================
+                      SECURE PASSWORD GENERATOR
+======================================================================
+
+Generating 1 password(s) of length 20:
+
+  1. 5k8=Nz)jFTx#9l+kI8Q!
+     Entropy: 131.09 bits | Strength: Very Strong
+
+======================================================================
+```
+
+Expected output for `analyze "password123"`:
+```
+Password Length: 11 characters
+Entropy: 56.87 bits
+Strength: Very Weak (Score: 14/100)
+...
+⚠ This is a commonly used password!
+```
+
+---
+
+## Full usage reference
+
+All CLI commands run from inside the `src/` directory.
+
+### Password analysis
 
 ```bash
-# Initialize a new vault (first time only)
+# Analyze a password (shows entropy, score, crack time, patterns)
+python3 main.py analyze "MyP@ssw0rd!"
+
+# Analyze and also check the HIBP breach database
+python3 main.py analyze "MyP@ssw0rd!" --check-breach
+```
+
+### Password generation
+
+```bash
+# Generate one 16-char password (default)
+python3 main.py generate
+
+# Generate 5 passwords of length 20
+python3 main.py generate --length 20 --count 5
+
+# Skip ambiguous characters (useful for shared credentials)
+python3 main.py generate --length 16 --exclude-ambiguous
+
+# Generate passphrases (memorable, high-entropy)
+python3 main.py passphrase --words 5 --count 3
+
+# Generate PINs
+python3 main.py pin --length 6 --count 5
+```
+
+### Hash tools
+
+```bash
+# Identify an unknown hash
+python3 main.py identify "5f4dcc3b5aa765d61d8327deb882cf99"
+
+# Hash a password with SHA-256
+python3 main.py hash "MyPassword" --algorithm SHA256
+
+# Show all algorithm outputs at once
+python3 main.py hash "MyPassword" --algorithm ALL
+```
+
+### Encrypted vault
+
+```bash
+# Create a new vault (first time only — choose a strong master password)
 python3 main.py vault-init
 
 # Add a password entry (interactive)
@@ -83,178 +141,204 @@ python3 main.py vault-add
 # List all entries
 python3 main.py vault-list
 
-# List with passwords visible
-python3 main.py vault-list -p
-
-# Get specific entry (copies to clipboard on macOS)
+# Get a specific entry (copies to clipboard on macOS)
 python3 main.py vault-get github
 
 # Search entries
 python3 main.py vault-search "email"
 
-# Delete an entry
-python3 main.py vault-delete <entry-id>
-
-# Export vault to JSON
+# Export to JSON (without passwords — safe for backup)
 python3 main.py vault-export -o backup.json
-python3 main.py vault-export -o backup.json -p  # Include passwords (CAUTION!)
+
+# Export with passwords (keep this file secure!)
+python3 main.py vault-export -o backup.json -p
 ```
 
-### Password Analysis
+---
+
+## Browser GUI (Streamlit)
+
+One command launches the full visual interface:
 
 ```bash
-# Analyze password strength
-python3 main.py analyze "MyP@ssw0rd!"
-
-# Analyze with breach check
-python3 main.py analyze "MyP@ssw0rd!" --check-breach
+./launch_gui.sh
 ```
 
-### Password Generation
+The script sets up the virtual environment if needed, then opens the app at `http://localhost:8501`.
 
-```bash
-# Generate secure passwords
-python3 main.py generate --length 20 --count 5
-
-# Exclude ambiguous characters
-python3 main.py generate --length 16 --exclude-ambiguous
-
-# Generate passphrases
-python3 main.py passphrase --words 5 --count 3
-
-# Generate PINs
-python3 main.py pin --length 6 --count 5
-```
-
-### Hash Tools
-
-```bash
-# Identify a hash type
-python3 main.py identify "5f4dcc3b5aa765d61d8327deb882cf99"
-
-# Hash a password
-python3 main.py hash "MyPassword" --algorithm SHA256
-
-# Hash with all algorithms
-python3 main.py hash "MyPassword" --algorithm ALL
-```
-
-## Project Structure
-
-```
-Password-security-toolkit/
-├── README.md
-├── requirements.txt
-├── venv/                      # Virtual environment (created during setup)
-└── src/
-    ├── main.py                # CLI interface
-    ├── password_vault.py      # Encrypted vault module
-    ├── password_analyzer.py   # Strength analysis
-    ├── password_generator.py  # Secure generation
-    ├── breach_detector.py     # HIBP integration
-    ├── hash_tools.py          # Hash identification
-    └── app.py                 # Streamlit GUI (optional)
-```
-
-## Web UI (Streamlit)
-
-Run the graphical web interface:
+Or run it manually:
 
 ```bash
 cd src
 streamlit run app.py
 ```
 
-Access at `http://localhost:8501`
+The GUI includes all CLI features plus CSV import from Apple Passwords / Chrome / 1Password, bulk breach checking, and stale account detection.
 
-### Web UI Features
+---
 
-| Tab | Features |
-|-----|----------|
-| **View Entries** | List all passwords, filter by category, show/hide passwords |
-| **Add Entry** | Add new passwords with optional auto-generation |
-| **Search** | Find entries by name, username, or URL |
-| **Import** | CSV import from Apple Passwords, Chrome, 1Password |
-| **Settings** | Export, Breach Check, Stale Account Finder |
+## Docker deployment
 
-### Docker Deployment
-
-Deploy as a container for self-hosting:
+Self-host the GUI in a container. The vault file persists in `./data` on your host machine.
 
 ```bash
-# Build and run
+# Build and start
+docker compose up -d
+
+# Access at http://localhost:8501
+```
+
+Or run the image directly:
+
+```bash
 docker build -t password-vault .
 docker run -d -p 8501:8501 -v ./data:/app/data -e VAULT_PATH=/app/data password-vault
 ```
 
-Or use docker-compose:
+---
 
-```yaml
-version: '3.8'
-services:
-  password-vault:
-    build: .
-    ports:
-      - "8501:8501"
-    volumes:
-      - ./data:/app/data
-    environment:
-      - VAULT_PATH=/app/data
+## Project structure
+
+```
+Password-security-toolkit/
+├── README.md
+├── LICENSE
+├── requirements.txt
+├── Dockerfile              # Container build for the Streamlit GUI
+├── docker-compose.yml      # One-command compose deployment
+├── launch_gui.sh           # One-command GUI launcher (handles venv setup)
+└── src/
+    ├── main.py             # CLI entry point
+    ├── password_vault.py   # AES-256 encrypted vault
+    ├── password_analyzer.py  # Entropy + pattern analysis
+    ├── password_generator.py # Cryptographic password/passphrase/PIN generation
+    ├── breach_detector.py  # Have I Been Pwned integration
+    ├── hash_tools.py       # Hash identification and generation
+    └── app.py              # Streamlit web GUI
 ```
 
-## Vault Security Details
+---
+
+## Make it yours
+
+The only file you need to edit for customization is `requirements.txt` (to add packages) or `src/password_vault.py` if you want to change the default vault location.
+
+**Vault storage location** — the vault file defaults to `~/.password_vault/vault.encrypted`. Override it with the `VAULT_PATH` environment variable:
+
+```bash
+# Before:
+python3 main.py vault-init
+# Vault created at: /home/yourname/.password_vault/vault.encrypted
+
+# After (custom path):
+export VAULT_PATH=/path/to/your/vaults
+python3 main.py vault-init
+# Vault created at: /path/to/your/vaults/vault.encrypted
+```
+
+In Docker, set it in `docker-compose.yml`:
+
+```yaml
+environment:
+  - VAULT_PATH=/app/data
+```
+
+---
+
+## Vault security details
 
 | Feature | Implementation |
 |---------|---------------|
 | Encryption | AES-256 via Fernet (symmetric) |
-| Key Derivation | PBKDF2-HMAC-SHA256, 480,000 iterations |
+| Key derivation | PBKDF2-HMAC-SHA256, 480,000 iterations |
 | Salt | 32-byte cryptographically random per vault |
-| Storage Location | `~/.password_vault/vault.encrypted` |
-| File Permissions | `0600` (owner read/write only) |
+| Storage location | `~/.password_vault/vault.encrypted` (or `$VAULT_PATH`) |
+| File permissions | `0600` (owner read/write only) |
 
-**Important**: If you forget your master password, your data cannot be recovered. Keep a secure backup of your master password.
+If you forget your master password, the data cannot be recovered. Keep a secure backup of the master password itself.
 
-## Shell Alias (Optional)
+---
 
-Add to your `~/.zshrc` or `~/.bashrc`:
+## Optional shell alias
+
+Add to your `~/.zshrc` or `~/.bashrc` so you can type `pwtool` from anywhere:
 
 ```bash
-alias pwtool='cd ~/path/to/Password-security-toolkit/src && ../venv/bin/python3 main.py'
+alias pwtool='cd /path/to/Password-security-toolkit/src && ../venv/bin/python3 main.py'
 ```
 
-Then use:
+Replace `/path/to/` with the actual clone location. Then:
+
 ```bash
-pwtool vault-list
 pwtool generate -l 20
+pwtool analyze "mypassword"
 ```
 
-## Security Best Practices
+---
 
-### Password Creation
-- Use at least 16 characters
-- Include all character types (upper, lower, digits, special)
-- Avoid common patterns and dictionary words
-- Use passphrases for memorable yet strong passwords
-- Never reuse passwords across accounts
+## Troubleshooting
 
-### Password Storage
-- Use bcrypt, Argon2, or scrypt for hashing
-- Always use unique salts
-- Never store passwords in plain text
-- Never use MD5 or SHA1 for passwords
+**`ModuleNotFoundError: No module named 'password_analyzer'`**
+You ran `python3 main.py` from the repo root instead of `src/`. All CLI commands must run from inside `src/`:
+```bash
+cd src
+python3 main.py generate -l 20
+```
+
+**`ModuleNotFoundError: No module named 'cryptography'` (or similar)**
+The virtual environment is not activated. Run:
+```bash
+source venv/bin/activate      # macOS/Linux
+venv\Scripts\activate         # Windows
+pip install -r requirements.txt
+```
+
+**`vault-get` doesn't copy to clipboard**
+Clipboard copy (`pbcopy`) is macOS only. On Linux, install `xclip` and the code will fall back gracefully; on Windows, copy the password shown on screen manually.
+
+**Streamlit port already in use**
+Another app is using port 8501. Pick a different port:
+```bash
+streamlit run app.py --server.port 8502
+```
+
+**Docker: `permission denied` on `./data`**
+The container runs as root by default. Create the data directory first:
+```bash
+mkdir -p data
+docker compose up -d
+```
+
+---
+
+## Security best practices
+
+- Use at least 16 characters; longer is always better.
+- Mix all character types (upper, lower, digits, special).
+- Never reuse passwords across accounts.
+- Store with bcrypt, Argon2, or scrypt — never MD5 or SHA-1.
+- Enable two-factor authentication wherever possible.
+
+---
 
 ## Dependencies
 
-- `requests` - HTTP library for breach checking
-- `cryptography` - AES-256 encryption for vault
-- `streamlit` - Web GUI (optional)
+- `requests` — HTTP client for HIBP breach API
+- `cryptography` — AES-256 Fernet encryption for the vault
+- `streamlit` — optional browser GUI
+
+---
+
+## Credits
+
+Built by [Jason Tilson](https://github.com/Scargiver-cyber) for cybersecurity education.
+
+- [Have I Been Pwned](https://haveibeenpwned.com/) by Troy Hunt — breach database API
+- Python `secrets` module — cryptographically secure random generation
+- Python `cryptography` library — Fernet AES-256 encryption
+
+---
 
 ## License
 
-MIT License - See LICENSE file for details.
-
-## Acknowledgments
-
-- [Have I Been Pwned](https://haveibeenpwned.com/) by Troy Hunt
-- Python `secrets` module for cryptographic randomness
-- Python `cryptography` library for Fernet encryption
+MIT License — see [LICENSE](LICENSE) for details.
